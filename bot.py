@@ -303,8 +303,8 @@ def advance_state(state):
 # MESSAGE BUILDER
 # ════════════════════════════════════════════════════════
 def build_message(state):
-    now   = datetime.now(BD_TZ)
-    days  = ["সোমবার","মঙ্গলবার","বুধবার","বৃহস্পতিবার","শুক্রবার","শনিবার","রবিবার"]
+    now      = datetime.now(BD_TZ)
+    days     = ["সোমবার","মঙ্গলবার","বুধবার","বৃহস্পতিবার","শুক্রবার","শনিবার","রবিবার"]
     day_name = days[now.weekday()]
     date_str = now.strftime("%d/%m/%Y")
     week     = state["week"]
@@ -312,43 +312,43 @@ def build_message(state):
     eee = EEE_DAYS[state["eee_order"][state["day_index"]]]
 
     lines = [
-        f"📅 *{day_name}  |  {date_str}  |  Week {week}*",
+        f"📅 <b>{day_name}  |  {date_str}  |  Week {week}</b>",
         "━━━━━━━━━━━━━━━━━━━━━━━",
         "",
-        f"{eee['label']}",
+        f"<b>{eee['label']}</b>",
         "",
     ]
     for i, t in enumerate(eee["topics"], 1):
-        lines.append(f"  `{i:02d}.` {t}")
+        lines.append(f"  <code>{i:02d}.</code> {t}")
 
     lines += [
         "",
         "━━━━━━━━━━━━━━━━━━━━━━━",
-        "📚 *Non\\-Department Topics*",
+        "📚 <b>Non-Department Topics</b>",
         "",
     ]
 
     subject_emojis = {
-        "বাংলা ভাষা ও সাহিত্য":          "🔵",
-        "English Language & Literature":   "🟢",
-        "বাংলাদেশ বিষয়াবলি":              "🟡",
-        "আন্তর্জাতিক বিষয়াবলি":           "🟠",
-        "সাধারণ বিজ্ঞান":                  "🔴",
-        "কম্পিউটার ও তথ্যপ্রযুক্তি":      "🟣",
-        "গাণিতিক যুক্তি":                  "⚪",
+        "বাংলা ভাষা ও সাহিত্য":         "🔵",
+        "English Language & Literature":  "🟢",
+        "বাংলাদেশ বিষয়াবলি":             "🟡",
+        "আন্তর্জাতিক বিষয়াবলি":          "🟠",
+        "সাধারণ বিজ্ঞান":                 "🔴",
+        "কম্পিউটার ও তথ্যপ্রযুক্তি":     "🟣",
+        "গাণিতিক যুক্তি":                 "⚪",
     }
 
     for subj in NON_DEPT_SUBJECTS:
         emoji = subject_emojis.get(subj, "▪️")
         topic = next_non_topic(state, subj)
-        lines.append(f"{emoji} *{subj}*")
+        lines.append(f"{emoji} <b>{subj}</b>")
         lines.append(f"    ➤ {topic}")
         lines.append("")
 
     lines += [
         "━━━━━━━━━━━━━━━━━━━━━━━",
-        "💪 *আজকের লক্ষ্য: ৮\\+ ঘন্টা পড়া\\!*",
-        "🔁 _টপিক প্রতি সপ্তাহে র‍্যান্ডম shuffle হয়_",
+        "💪 <b>আজকের লক্ষ্য: ৮+ ঘন্টা পড়া!</b>",
+        "🔁 <i>টপিক প্রতি সপ্তাহে র‍্যান্ডম shuffle হয়</i>",
     ]
 
     return "\n".join(lines)
@@ -362,7 +362,7 @@ async def send_message(text: str) -> int:
         r = await client.post(f"{BASE_URL}/sendMessage", json={
             "chat_id":    CHAT_ID,
             "text":       text,
-            "parse_mode": "MarkdownV2",
+            "parse_mode": "HTML",
         })
         r.raise_for_status()
         return r.json()["result"]["message_id"]
