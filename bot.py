@@ -315,6 +315,12 @@ def advance_state(state):
 # ════════════════════════════════════════════════════════
 # MESSAGE BUILDER
 # ════════════════════════════════════════════════════════
+def yt_link(query: str) -> str:
+    """Return a YouTube search URL for the given query."""
+    import urllib.parse
+    q = urllib.parse.quote_plus(query + " bangla lecture")
+    return f"https://www.youtube.com/results?search_query={q}"
+
 def build_message(state):
     now      = datetime.now(BD_TZ)
     days     = ["সোমবার","মঙ্গলবার","বুধবার","বৃহস্পতিবার","শুক্রবার","শনিবার","রবিবার"]
@@ -323,23 +329,6 @@ def build_message(state):
     week     = state["week"]
 
     eee = EEE_DAYS[state["eee_order"][state["day_index"]]]
-
-    lines = [
-        f"📅 <b>{day_name}  |  {date_str}  |  Week {week}</b>",
-        "━━━━━━━━━━━━━━━━━━━━━━━",
-        "",
-        f"<b>{eee['label']}</b>",
-        "",
-    ]
-    for i, t in enumerate(eee["topics"], 1):
-        lines.append(f"  <code>{i:02d}.</code> {t}")
-
-    lines += [
-        "",
-        "━━━━━━━━━━━━━━━━━━━━━━━",
-        "📚 <b>Non-Department Topics</b>",
-        "",
-    ]
 
     subject_emojis = {
         "বাংলা ভাষা ও সাহিত্য":         "🔵",
@@ -351,14 +340,36 @@ def build_message(state):
         "গাণিতিক যুক্তি":                 "⚪",
     }
 
+    lines = [
+        f"📅 <b>{day_name}  |  {date_str}  |  Week {week}</b>",
+        "━━━━━━━━━━━━━━━━━━━━━━━",
+        "",
+        "📚 <b>Non-Department Topics</b>",
+        "",
+    ]
+
+    # ── Non-Dept (top) ──────────────────────────────────
     for subj in NON_DEPT_SUBJECTS:
         emoji = subject_emojis.get(subj, "▪️")
         topic = next_non_topic(state, subj)
+        link  = yt_link(topic)
         lines.append(f"{emoji} <b>{subj}</b>")
         lines.append(f"    ➤ {topic}")
+        lines.append(f'    🎬 <a href="{link}">YouTube এ দেখো</a>')
         lines.append("")
 
+    # ── EEE Dept (bottom) ───────────────────────────────
     lines += [
+        "━━━━━━━━━━━━━━━━━━━━━━━",
+        f"<b>{eee['label']}</b>",
+        "",
+    ]
+    for i, t in enumerate(eee["topics"], 1):
+        link = yt_link(t)
+        lines.append(f'  <code>{i:02d}.</code> {t}  <a href="{link}">▶️</a>')
+
+    lines += [
+        "",
         "━━━━━━━━━━━━━━━━━━━━━━━",
         "💪 <b>আজকের লক্ষ্য: ৮+ ঘন্টা পড়া!</b>",
         "🔁 <i>টপিক প্রতি সপ্তাহে র‍্যান্ডম shuffle হয়</i>",
