@@ -262,16 +262,29 @@ NON_DEPT_SUBJECTS = list(NON_DEPT.keys())
 # STATE
 # ════════════════════════════════════════════════════════
 def load_state():
+    state = {}
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE) as f:
-            return json.load(f)
-    eee_order = list(range(7))
-    random.shuffle(eee_order)
-    # per subject: shuffled topic indices
-    non_queues = {subj: list(range(len(NON_DEPT[subj]))) for subj in NON_DEPT_SUBJECTS}
-    for subj in non_queues:
-        random.shuffle(non_queues[subj])
-    return {"day_index": 0, "week": 1, "eee_order": eee_order, "non_queues": non_queues, "non_pointers": {s: 0 for s in NON_DEPT_SUBJECTS}}
+            state = json.load(f)
+
+    # Fill any missing keys (handles old cache or first run)
+    if "day_index" not in state:
+        state["day_index"] = 0
+    if "week" not in state:
+        state["week"] = 1
+    if "eee_order" not in state:
+        eee_order = list(range(7))
+        random.shuffle(eee_order)
+        state["eee_order"] = eee_order
+    if "non_queues" not in state:
+        non_queues = {subj: list(range(len(NON_DEPT[subj]))) for subj in NON_DEPT_SUBJECTS}
+        for subj in non_queues:
+            random.shuffle(non_queues[subj])
+        state["non_queues"] = non_queues
+    if "non_pointers" not in state:
+        state["non_pointers"] = {s: 0 for s in NON_DEPT_SUBJECTS}
+
+    return state
 
 def save_state(state):
     with open(STATE_FILE, "w") as f:
