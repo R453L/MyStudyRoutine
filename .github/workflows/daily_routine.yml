@@ -2,80 +2,102 @@ name: Daily Study Routine
 
 on:
   schedule:
-    - cron: '0 22 * * *'   # UTC 22:00 = BD 04:00 — সকালের routine
-    - cron: '0 14 * * *'   # UTC 14:00 = BD 20:00 — রাতের quiz
+    # ── ভোর ৪:০০ BD — Morning Routine ──────────────────
+    - cron: '0 22 * * *'
+
+    # ── Non-Dept (দুপুর ১২:০০ → ৩:০০ BD) ─────────────
+    - cron: '0 6 * * *'     # BD 12:00 — বাংলা + English      (Batch 0)
+    - cron: '0 7 * * *'     # BD 13:00 — বাংলাদেশ + আন্তর্জাতিক (Batch 1)
+    - cron: '0 8 * * *'     # BD 14:00 — বিজ্ঞান + কম্পিউটার  (Batch 2)
+    - cron: '0 9 * * *'     # BD 15:00 — গণিত                  (Batch 3)
+
+    # ── EEE (বিকাল ৩:৩০ → রাত ৮:০০ BD) ───────────────
+    # Max 7 slots (Circuit Theory দিন), 45 min gap
+    # অন্য দিনে quiz_bot নিজেই skip করবে extra slots
+    - cron: '30 9 * * *'    # BD 15:30 — EEE Batch 0
+    - cron: '15 10 * * *'   # BD 16:15 — EEE Batch 1
+    - cron: '0 11 * * *'    # BD 17:00 — EEE Batch 2
+    - cron: '45 11 * * *'   # BD 17:45 — EEE Batch 3
+    - cron: '30 12 * * *'   # BD 18:30 — EEE Batch 4
+    - cron: '15 13 * * *'   # BD 19:15 — EEE Batch 5
+    - cron: '0 14 * * *'    # BD 20:00 — EEE Batch 6
+
   workflow_dispatch:
     inputs:
       job_type:
-        description: 'Which job to run'
+        description: 'routine / quiz'
         required: true
-        default: 'routine'
+        default: 'quiz'
         type: choice
-        options:
-          - routine
-          - quiz
+        options: [routine, quiz]
+      batch_num:
+        description: 'Batch number (0=বাংলা+English, 1=বাংলাদেশ+আন্তর্জাতিক, 2=বিজ্ঞান+কম্পিউটার, 3=গণিত, 4-10=EEE)'
+        required: false
+        default: '4'
 
 jobs:
-  # ── ভোর ৪টা — Daily Routine ──────────────────────────
+  # ════════════════════════════════════════════════════
+  # ভোর ৪টা — Morning Routine
+  # ════════════════════════════════════════════════════
   send-routine:
-    if: github.event_name == 'schedule' && github.event.schedule == '0 22 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.job_type == 'routine')
+    if: >
+      (github.event_name == 'schedule' && github.event.schedule == '0 22 * * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.job_type == 'routine')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Restore state
-        uses: actions/cache@v4
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         with:
           path: state.json
           key: study-state-${{ github.run_number }}
           restore-keys: study-state-
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install httpx
-
-      - name: Run routine bot
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install httpx
+      - run: python bot.py
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID:   ${{ secrets.CHAT_ID }}
-        run: python bot.py
-
-      - name: Save state
-        uses: actions/cache/save@v4
+      - uses: actions/cache/save@v4
         with:
           path: state.json
           key: study-state-${{ github.run_number }}
 
-  # ── রাত ৮টা — Quiz Session ───────────────────────────
+  # ════════════════════════════════════════════════════
+  # Quiz batches
+  # ════════════════════════════════════════════════════
   send-quiz:
-    if: github.event_name == 'schedule' && github.event.schedule == '0 14 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.job_type == 'quiz')
+    if: >
+      (github.event_name == 'schedule' && github.event.schedule != '0 22 * * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.job_type == 'quiz')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Restore state (read-only for quiz)
-        uses: actions/cache@v4
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         with:
           path: state.json
           key: study-state-${{ github.run_number }}
           restore-keys: study-state-
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install httpx
-
-      - name: Run quiz bot
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install httpx
+      - name: Run quiz batch
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           GROUP_ID:  ${{ secrets.GROUP_ID }}
+          BATCH_NUM: >-
+            ${{
+              github.event_name == 'workflow_dispatch' && github.event.inputs.batch_num ||
+              github.event.schedule == '0 6 * * *'   && '0' ||
+              github.event.schedule == '0 7 * * *'   && '1' ||
+              github.event.schedule == '0 8 * * *'   && '2' ||
+              github.event.schedule == '0 9 * * *'   && '3' ||
+              github.event.schedule == '30 9 * * *'  && '4' ||
+              github.event.schedule == '15 10 * * *' && '5' ||
+              github.event.schedule == '0 11 * * *'  && '6' ||
+              github.event.schedule == '45 11 * * *' && '7' ||
+              github.event.schedule == '30 12 * * *' && '8' ||
+              github.event.schedule == '15 13 * * *' && '9' ||
+              '10'
+            }}
         run: python quiz_bot.py
