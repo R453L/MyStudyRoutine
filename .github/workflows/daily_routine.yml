@@ -2,24 +2,34 @@ name: Daily Study Routine
 
 on:
   schedule:
-    - cron: '0 22 * * *'   # UTC 22:00 = Bangladesh 04:00 (UTC+6)
-  workflow_dispatch:        # manual trigger for testing
+    - cron: '0 22 * * *'   # UTC 22:00 = BD 04:00 — সকালের routine
+    - cron: '0 14 * * *'   # UTC 14:00 = BD 20:00 — রাতের quiz
+  workflow_dispatch:
+    inputs:
+      job_type:
+        description: 'Which job to run'
+        required: true
+        default: 'routine'
+        type: choice
+        options:
+          - routine
+          - quiz
 
 jobs:
+  # ── ভোর ৪টা — Daily Routine ──────────────────────────
   send-routine:
+    if: github.event_name == 'schedule' && github.event.schedule == '0 22 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.job_type == 'routine')
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Restore state file
+      - name: Restore state
         uses: actions/cache@v4
         with:
           path: state.json
           key: study-state-${{ github.run_number }}
-          restore-keys: |
-            study-state-
+          restore-keys: study-state-
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -29,14 +39,43 @@ jobs:
       - name: Install dependencies
         run: pip install httpx
 
-      - name: Run bot
+      - name: Run routine bot
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID:   ${{ secrets.CHAT_ID }}
         run: python bot.py
 
-      - name: Save updated state
+      - name: Save state
         uses: actions/cache/save@v4
         with:
           path: state.json
           key: study-state-${{ github.run_number }}
+
+  # ── রাত ৮টা — Quiz Session ───────────────────────────
+  send-quiz:
+    if: github.event_name == 'schedule' && github.event.schedule == '0 14 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.job_type == 'quiz')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Restore state (read-only for quiz)
+        uses: actions/cache@v4
+        with:
+          path: state.json
+          key: study-state-${{ github.run_number }}
+          restore-keys: study-state-
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install httpx
+
+      - name: Run quiz bot
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          GROUP_ID:  ${{ secrets.GROUP_ID }}
+        run: python quiz_bot.py
