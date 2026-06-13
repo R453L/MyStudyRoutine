@@ -8,6 +8,8 @@ import httpx
 BOT_TOKEN  = os.environ["BOT_TOKEN"]
 GROUP_ID   = os.environ["GROUP_ID"]
 STATE_FILE = "state.json"
+# কোন batch পাঠাতে হবে (0-7), workflow থেকে pass হবে
+BATCH_NUM  = int(os.environ.get("BATCH_NUM", "0"))
 BASE_URL   = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 from questions import EEE_QUESTIONS, NON_DEPT_QUESTIONS
@@ -25,20 +27,21 @@ EEE_DAY_KEYS = [
 ]
 NON_DEPT_KEYS = list(NON_DEPT_QUESTIONS.keys())
 
-# ── Rate-limit safe API call with retry ──────────────────
-async def api_call(endpoint: str, payload: dict, retries: int = 6):
+# ── API call with retry ───────────────────────────────────
+async def api_call(endpoint, payload, retries=6):
     async with httpx.AsyncClient(timeout=30) as client:
         for attempt in range(retries):
             r = await client.post(f"{BASE_URL}/{endpoint}", json=payload)
             if r.status_code == 429:
-                retry_after = r.json().get("parameters", {}).get("retry_after", 15)
-                wait = retry_after + 3
-                print(f"⏳ Rate limited. Waiting {wait}s (attempt {attempt+1})")
+                wait = r.json().get("parameters", {}).get("retry_after", 20) + 10
+                print(f"⏳ Rate limit. Waiting {wait}s...")
                 await asyncio.sleep(wait)
                 continue
-            r.raise_for_status()
+            if not r.is_success:
+                print(f"❌ {r.status_code}: {r.text}")
+                return None
             return r.json()["result"]
-        raise Exception(f"Failed after {retries} retries on {endpoint}")
+    return None
 
 async def send_poll(question, options, correct_idx, explanation):
     result = await api_call("sendPoll", {
@@ -50,17 +53,18 @@ async def send_poll(question, options, correct_idx, explanation):
         "explanation":       explanation[:200] if explanation else "",
         "is_anonymous":      False,
     })
-    await asyncio.sleep(5)  # 5s between each poll
-    return result["message_id"]
+    await asyncio.sleep(12)
+    return result
 
 async def send_text(text):
+    # strip unsupported tags, use plain HTML only
     result = await api_call("sendMessage", {
         "chat_id":    GROUP_ID,
         "text":       text,
         "parse_mode": "HTML",
     })
-    await asyncio.sleep(3)
-    return result["message_id"]
+    await asyncio.sleep(5)
+    return result
 
 # ── State ─────────────────────────────────────────────────
 def load_state():
@@ -69,85 +73,88 @@ def load_state():
             return json.load(f)
     return {"day_index": 0, "week": 1, "eee_order": list(range(7))}
 
+# ── Build batch list ──────────────────────────────────────
+# Batch 0-6: Non-Dept subjects (একটা করে)
+# Batch 7: EEE topics
+def build_batches(eee_key):
+    batches = []
+
+    # Batch 0-6: Non-Dept (৭টা subject আলাদা আলাদা batch)
+    for subj in NON_DEPT_KEYS:
+        topics   = NON_DEPT_QUESTIONS.get(subj, [])
+        all_mcqs = []
+        for t in topics:
+            all_mcqs.extend(t["mcq"])
+        selected = random.sample(all_mcqs, min(5, len(all_mcqs)))
+        batches.append({"type": "non_dept", "subj": subj, "mcqs": selected})
+
+    # Batch 7: EEE (সব topics একসাথে)
+    eee_topics = EEE_QUESTIONS.get(eee_key, [])
+    batches.append({"type": "eee", "key": eee_key, "topics": eee_topics})
+
+    return batches
+
 # ── Main ──────────────────────────────────────────────────
 async def main():
     state     = load_state()
     day_idx   = state.get("day_index", 0)
     week      = state.get("week", 1)
     eee_order = state.get("eee_order", list(range(7)))
+    eee_key   = EEE_DAY_KEYS[eee_order[day_idx]]
 
     now      = datetime.now(BD_TZ)
     days     = ["সোমবার","মঙ্গলবার","বুধবার","বৃহস্পতিবার","শুক্রবার","শনিবার","রবিবার"]
     day_name = days[now.weekday()]
 
-    eee_key    = EEE_DAY_KEYS[eee_order[day_idx]]
-    eee_topics = EEE_QUESTIONS.get(eee_key, [])
+    # random seed fix করো যেন সব batch এ same questions আসে
+    random.seed(f"{day_idx}-{week}")
+    batches = build_batches(eee_key)
 
-    # ── Header
-    await send_text(
-        f"🌙 <b>রাতের Quiz Session</b>\n"
-        f"📅 {day_name} | Week {week}\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📚 <b>Non-Department MCQ শুরু হচ্ছে...</b>"
-    )
+    if BATCH_NUM >= len(batches):
+        print(f"❌ Invalid BATCH_NUM={BATCH_NUM}, max={len(batches)-1}")
+        return
 
-    # ── Non-Dept: প্রতি subject থেকে ৫টা MCQ
-    for subj in NON_DEPT_KEYS:
-        topics = NON_DEPT_QUESTIONS.get(subj, [])
-        if not topics:
-            continue
+    batch = batches[BATCH_NUM]
 
-        all_mcqs = []
-        for t in topics:
-            all_mcqs.extend(t["mcq"])
+    if batch["type"] == "non_dept":
+        subj  = batch["subj"]
+        mcqs  = batch["mcqs"]
+        emoji_map = {
+            "বাংলা ভাষা ও সাহিত্য":         "🔵",
+            "English Language & Literature":  "🟢",
+            "বাংলাদেশ বিষয়াবলি":             "🟡",
+            "আন্তর্জাতিক বিষয়াবলি":          "🟠",
+            "সাধারণ বিজ্ঞান":                 "🔴",
+            "কম্পিউটার ও তথ্যপ্রযুক্তি":     "🟣",
+            "গাণিতিক যুক্তি":                 "⚪",
+        }
+        emoji = emoji_map.get(subj, "📚")
+        await send_text(
+            f"{emoji} <b>{subj}</b>\n"
+            f"📅 {day_name} | Week {week} | Batch {BATCH_NUM+1}/8"
+        )
+        for mcq in mcqs:
+            await send_poll(mcq["q"], mcq["options"], mcq["answer"], mcq.get("explanation",""))
 
-        selected = random.sample(all_mcqs, min(5, len(all_mcqs)))
+    elif batch["type"] == "eee":
+        await send_text(
+            f"⚡ <b>EEE Quiz: {eee_key}</b>\n"
+            f"📅 {day_name} | Week {week} | Final Batch"
+        )
+        for topic_data in batch["topics"]:
+            await send_text(f"📌 <b>{topic_data['topic']}</b>")
+            for mcq in topic_data.get("mcq", [])[:5]:
+                await send_poll(mcq["q"], mcq["options"], mcq["answer"], mcq.get("explanation",""))
+            math = topic_data.get("math")
+            if math:
+                await send_text(
+                    f"📐 <b>Math:</b> {math['q']}\n\n"
+                    f"✅ <b>Solution:</b>\n<code>{math['solution']}</code>"
+                )
 
-        await send_text(f"🔵 <b>{subj}</b>")
+        await send_text("✅ <b>আজকের সব Quiz শেষ! ভালো করেছো 💪</b>")
 
-        for mcq in selected:
-            await send_poll(
-                question    = mcq["q"],
-                options     = mcq["options"],
-                correct_idx = mcq["answer"],
-                explanation = mcq.get("explanation", ""),
-            )
-
-    # ── EEE MCQ + Math
-    await send_text(
-        f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"⚡ <b>EEE: {eee_key}</b>"
-    )
-
-    for topic_data in eee_topics:
-        topic_name = topic_data["topic"]
-        mcqs       = topic_data.get("mcq", [])
-        math       = topic_data.get("math", None)
-
-        await send_text(f"📌 <b>{topic_name}</b>")
-
-        for mcq in mcqs[:5]:
-            await send_poll(
-                question    = mcq["q"],
-                options     = mcq["options"],
-                correct_idx = mcq["answer"],
-                explanation = mcq.get("explanation", ""),
-            )
-
-        if math:
-            await send_text(
-                f"📐 <b>Math Problem:</b>\n"
-                f"{math['q']}\n\n"
-                f"<tg-spoiler>✅ <b>Solution:</b>\n{math['solution']}</tg-spoiler>"
-            )
-
-    # ── Footer
-    await send_text(
-        "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "✅ <b>আজকের Quiz শেষ!</b>\n"
-        "💪 <i>ভালো করেছো — চালিয়ে যাও!</i>"
-    )
-    print(f"✅ Quiz done — eee={eee_key}")
+    print(f"✅ Batch {BATCH_NUM} done.")
 
 if __name__ == "__main__":
     asyncio.run(main())
