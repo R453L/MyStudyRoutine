@@ -3,6 +3,7 @@ name: Daily Study Routine
 on:
   schedule:
     - cron: '0 22 * * *'    # BD 04:00 — Morning Routine
+    - cron: '0 19 * * *'    # BD 01:00 — Collect Questions
     - cron: '0 6 * * *'     # BD 12:00 — Non-Dept Batch 0
     - cron: '0 7 * * *'     # BD 13:00 — Non-Dept Batch 1
     - cron: '0 8 * * *'     # BD 14:00 — Non-Dept Batch 2
@@ -21,7 +22,7 @@ on:
         required: true
         default: 'quiz'
         type: choice
-        options: [routine, quiz]
+        options: [routine, quiz, collect, bank_quiz]
       batch_num:
         description: 'Batch (0-3=Non-Dept, 4-10=EEE)'
         required: false
@@ -92,3 +93,54 @@ jobs:
               '10'
             }}
         run: python quiz_bot.py
+
+  # ── রাত ১টা — Collect Questions from Images ────────────
+  collect-questions:
+    runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'schedule' && github.event.schedule == '0 19 * * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.job_type == 'collect')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install httpx
+      - name: Collect questions from images
+        env:
+          BOT_TOKEN:       ${{ secrets.BOT_TOKEN }}
+          GROUP_ID:        ${{ secrets.GROUP_ID }}
+          GEMINI_API_KEY:  ${{ secrets.GEMINI_API_KEY }}
+        run: python collect_questions.py
+      - name: Commit updated question bank
+        run: |
+          git config user.name "StudyBot"
+          git config user.email "bot@study.local"
+          git add questions_bank.json
+          git diff --staged --quiet || git commit -m "bank: new questions added [skip ci]"
+          git push
+
+  # ── দুপুর ১২টা — Non-Dept Quiz from Bank ───────────────
+  send-bank-quiz:
+    runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'schedule' && github.event.schedule == '0 6 * * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.job_type == 'bank_quiz')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install httpx
+      - name: Send quiz from bank
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          GROUP_ID:  ${{ secrets.GROUP_ID }}
+        run: python quiz_bot_bank.py
+      - name: Save updated bank (sent_indices)
+        run: |
+          git config user.name "StudyBot"
+          git config user.email "bot@study.local"
+          git add questions_bank.json
+          git diff --staged --quiet || git commit -m "bank: sent indices updated [skip ci]"
+          git push
