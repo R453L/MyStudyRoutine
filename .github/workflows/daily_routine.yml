@@ -2,18 +2,11 @@ name: Daily Study Routine
 
 on:
   schedule:
-    # ── ভোর ৪:০০ BD — Morning Routine ──────────────────
-    - cron: '0 22 * * *'
-
-    # ── Non-Dept (দুপুর ১২:০০ → ৩:০০ BD) ─────────────
-    - cron: '0 6 * * *'     # BD 12:00 — বাংলা + English      (Batch 0)
-    - cron: '0 7 * * *'     # BD 13:00 — বাংলাদেশ + আন্তর্জাতিক (Batch 1)
-    - cron: '0 8 * * *'     # BD 14:00 — বিজ্ঞান + কম্পিউটার  (Batch 2)
-    - cron: '0 9 * * *'     # BD 15:00 — গণিত                  (Batch 3)
-
-    # ── EEE (বিকাল ৩:৩০ → রাত ৮:০০ BD) ───────────────
-    # Max 7 slots (Circuit Theory দিন), 45 min gap
-    # অন্য দিনে quiz_bot নিজেই skip করবে extra slots
+    - cron: '0 22 * * *'    # BD 04:00 — Morning Routine
+    - cron: '0 6 * * *'     # BD 12:00 — Non-Dept Batch 0
+    - cron: '0 7 * * *'     # BD 13:00 — Non-Dept Batch 1
+    - cron: '0 8 * * *'     # BD 14:00 — Non-Dept Batch 2
+    - cron: '0 9 * * *'     # BD 15:00 — Non-Dept Batch 3
     - cron: '30 9 * * *'    # BD 15:30 — EEE Batch 0
     - cron: '15 10 * * *'   # BD 16:15 — EEE Batch 1
     - cron: '0 11 * * *'    # BD 17:00 — EEE Batch 2
@@ -21,7 +14,6 @@ on:
     - cron: '30 12 * * *'   # BD 18:30 — EEE Batch 4
     - cron: '15 13 * * *'   # BD 19:15 — EEE Batch 5
     - cron: '0 14 * * *'    # BD 20:00 — EEE Batch 6
-
   workflow_dispatch:
     inputs:
       job_type:
@@ -31,14 +23,12 @@ on:
         type: choice
         options: [routine, quiz]
       batch_num:
-        description: 'Batch number (0=বাংলা+English, 1=বাংলাদেশ+আন্তর্জাতিক, 2=বিজ্ঞান+কম্পিউটার, 3=গণিত, 4-10=EEE)'
+        description: 'Batch (0-3=Non-Dept, 4-10=EEE)'
         required: false
-        default: '4'
+        default: '0'
 
 jobs:
-  # ════════════════════════════════════════════════════
-  # ভোর ৪টা — Morning Routine
-  # ════════════════════════════════════════════════════
+  # ── ভোর ৪টা — Morning Routine ──────────────────────────
   send-routine:
     if: >
       (github.event_name == 'schedule' && github.event.schedule == '0 22 * * *') ||
@@ -46,26 +36,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
         with:
-          path: state.json
-          key: study-state-${{ github.run_number }}
-          restore-keys: study-state-
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/setup-python@v5
         with: { python-version: '3.11' }
+
       - run: pip install httpx
-      - run: python bot.py
+
+      - name: Run routine bot
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID:   ${{ secrets.CHAT_ID }}
-      - uses: actions/cache/save@v4
-        with:
-          path: state.json
-          key: study-state-${{ github.run_number }}
+        run: python bot.py
 
-  # ════════════════════════════════════════════════════
-  # Quiz batches
-  # ════════════════════════════════════════════════════
+      - name: Commit updated state.json
+        run: |
+          git config user.name "StudyBot"
+          git config user.email "bot@study.local"
+          git add state.json
+          git diff --staged --quiet || git commit -m "state: day advanced [skip ci]"
+          git push
+
+  # ── Quiz Batches ────────────────────────────────────────
   send-quiz:
     if: >
       (github.event_name == 'schedule' && github.event.schedule != '0 22 * * *') ||
@@ -73,14 +66,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        with:
-          path: state.json
-          key: study-state-${{ github.run_number }}
-          restore-keys: study-state-
+
       - uses: actions/setup-python@v5
         with: { python-version: '3.11' }
+
       - run: pip install httpx
+
       - name: Run quiz batch
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
