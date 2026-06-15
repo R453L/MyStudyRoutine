@@ -10,7 +10,7 @@ GROUP_ID     = os.environ["GROUP_ID"]
 GEMINI_KEY   = os.environ["GEMINI_API_KEY"]
 BANK_FILE    = "questions_bank.json"
 BASE_URL     = f"https://api.telegram.org/bot{BOT_TOKEN}"
-GEMINI_URL   = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
+GEMINI_URL   = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_KEY}"
 BD_TZ        = timezone(timedelta(hours=6))
 
 # ── Load/Save question bank ───────────────────────────────
