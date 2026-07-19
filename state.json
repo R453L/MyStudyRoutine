@@ -1,5 +1,5 @@
 {
-  "day_index": 1,
+  "day_index": 2,
   "week": 6,
   "eee_order": [
     0,
@@ -12,32 +12,32 @@
   ],
   "non_queues": {
     "\u09ac\u09be\u0982\u09b2\u09be \u09ad\u09be\u09b7\u09be \u0993 \u09b8\u09be\u09b9\u09bf\u09a4\u09cd\u09af": [
-      5,
-      1,
-      7,
-      9,
-      8,
-      2,
+      4,
       11,
-      6,
       3,
-      4,
-      0,
-      10
-    ],
-    "English Language & Literature": [
-      6,
-      9,
-      3,
+      2,
       1,
-      4,
+      6,
       5,
       10,
       7,
       8,
-      11,
-      2,
+      9,
       0
+    ],
+    "English Language & Literature": [
+      1,
+      5,
+      10,
+      8,
+      0,
+      4,
+      11,
+      6,
+      3,
+      7,
+      9,
+      2
     ],
     "\u09ac\u09be\u0982\u09b2\u09be\u09a6\u09c7\u09b6 \u09ac\u09bf\u09b7\u09af\u09bc\u09be\u09ac\u09b2\u09bf": [
       0,
@@ -84,27 +84,27 @@
       4
     ],
     "\u0997\u09be\u09a3\u09bf\u09a4\u09bf\u0995 \u09af\u09c1\u0995\u09cd\u09a4\u09bf": [
-      1,
+      11,
+      10,
+      2,
+      9,
       7,
       4,
-      9,
-      2,
-      5,
-      11,
-      0,
       8,
-      6,
       3,
-      10
+      1,
+      5,
+      0,
+      6
     ]
   },
   "non_pointers": {
-    "\u09ac\u09be\u0982\u09b2\u09be \u09ad\u09be\u09b7\u09be \u0993 \u09b8\u09be\u09b9\u09bf\u09a4\u09cd\u09af": 12,
-    "English Language & Literature": 12,
-    "\u09ac\u09be\u0982\u09b2\u09be\u09a6\u09c7\u09b6 \u09ac\u09bf\u09b7\u09af\u09bc\u09be\u09ac\u09b2\u09bf": 4,
-    "\u0986\u09a8\u09cd\u09a4\u09b0\u09cd\u099c\u09be\u09a4\u09bf\u0995 \u09ac\u09bf\u09b7\u09af\u09bc\u09be\u09ac\u09b2\u09bf": 4,
-    "\u09b8\u09be\u09a7\u09be\u09b0\u09a3 \u09ac\u09bf\u099c\u09cd\u099e\u09be\u09a8": 6,
-    "\u0995\u09ae\u09cd\u09aa\u09bf\u0989\u099f\u09be\u09b0 \u0993 \u09a4\u09a5\u09cd\u09af\u09aa\u09cd\u09b0\u09af\u09c1\u0995\u09cd\u09a4\u09bf": 6,
-    "\u0997\u09be\u09a3\u09bf\u09a4\u09bf\u0995 \u09af\u09c1\u0995\u09cd\u09a4\u09bf": 12
+    "\u09ac\u09be\u0982\u09b2\u09be \u09ad\u09be\u09b7\u09be \u0993 \u09b8\u09be\u09b9\u09bf\u09a4\u09cd\u09af": 1,
+    "English Language & Literature": 1,
+    "\u09ac\u09be\u0982\u09b2\u09be\u09a6\u09c7\u09b6 \u09ac\u09bf\u09b7\u09af\u09bc\u09be\u09ac\u09b2\u09bf": 5,
+    "\u0986\u09a8\u09cd\u09a4\u09b0\u09cd\u099c\u09be\u09a4\u09bf\u0995 \u09ac\u09bf\u09b7\u09af\u09bc\u09be\u09ac\u09b2\u09bf": 5,
+    "\u09b8\u09be\u09a7\u09be\u09b0\u09a3 \u09ac\u09bf\u099c\u09cd\u099e\u09be\u09a8": 7,
+    "\u0995\u09ae\u09cd\u09aa\u09bf\u0989\u099f\u09be\u09b0 \u0993 \u09a4\u09a5\u09cd\u09af\u09aa\u09cd\u09b0\u09af\u09c1\u0995\u09cd\u09a4\u09bf": 7,
+    "\u0997\u09be\u09a3\u09bf\u09a4\u09bf\u0995 \u09af\u09c1\u0995\u09cd\u09a4\u09bf": 1
   }
 }
